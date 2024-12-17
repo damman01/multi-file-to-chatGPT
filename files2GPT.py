@@ -1,11 +1,13 @@
 import os
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLineEdit, QFileDialog, QVBoxLayout, QHBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLineEdit, QFileDialog, QVBoxLayout, QHBoxLayout, QWidget, QGridLayout
 
 class FolderSelectionApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.initUI()
 
+    def initUI(self):
         # set up window
         self.setWindowTitle("Folder Selection App")
         self.setGeometry(100, 100, 600, 100)
@@ -59,36 +61,54 @@ class FolderSelectionApp(QMainWindow):
         return file_list        
 
     def start_processing(self):
+        # Reset layout
+        for i in reversed(range(self.centralWidget().layout().count())):
+            widget = self.centralWidget().layout().itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
 
         # get folder path from entry widget
         folder_path = self.folder_entry.text()
-        file_data_list = self.scan_files(folder_path,["py","html","css","js","svelte"])
+        file_data_list = self.scan_files(folder_path,["py","html","css","scss","js","svelte","ts","json"])
 
         # create layout for buttons
-        hbox = QHBoxLayout()
+        grid = QGridLayout()
 
         # add init button to layout
-        button = QPushButton("init chat GPT", self)
+        init_button = QPushButton("init chat GPT", self)
         text_init = """
         I want you to act as a Senior software developer.
-        I will paste multiple files to your promt. 
-        I will write END to to your promt when I am ready with all files.
-        Do not ask or epxlain anything until END.
+        I will paste multiple files to your prompt. 
+        I will write END to to your prompt when I am ready with all files.
+        Do not ask or explain anything until END.
         """ 
-        button.clicked.connect(lambda checked, text=text_init: QApplication.clipboard().setText(text))
-        hbox.addWidget(button)
+        init_button.clicked.connect(lambda checked, text=text_init: QApplication.clipboard().setText(text))
+        grid.addWidget(init_button, 0, 0)
+
+
+        # add button to copy all files in one
+        copy_all_button = QPushButton("Copy All Files", self)
+        all_files_text = text_init + "\n\n" + "\n\n".join(
+            f"This is the next file. \nfile name:\n{file_data[0]}\nfile data:\n```\n{file_data[1]}\n```"
+            for file_data in file_data_list
+        ) + "\n\nEND"
+        copy_all_button.clicked.connect(lambda checked, text=all_files_text: QApplication.clipboard().setText(text))
+        grid.addWidget(copy_all_button, 0, 1)
+
 
         # create and add buttons to layout
         for index,file_data in enumerate(file_data_list):
-            button = QPushButton(file_data[0], self)
-            text_out = "This is the next file. Do not explaine.\nfile name:\n"+file_data[0]+"\nfile data:\n"+file_data[1]
-            button.clicked.connect(lambda checked, text=text_out: QApplication.clipboard().setText(text))
-            hbox.addWidget(button)
+            data_button = QPushButton(file_data[0], self)
+            text_out = "This is the next file. Do not explain.\nfile name:\n"+file_data[0]+"\nfile data:\n"+file_data[1]
+            data_button.clicked.connect(lambda checked, text=text_out: QApplication.clipboard().setText(text))
+            row = (index + 4) // 4
+            col = (index + 4) % 4
+            grid.addWidget(data_button, row, col)
 
 
         # set layout for buttons
         buttons_widget = QWidget(self)
-        buttons_widget.setLayout(hbox)
+        buttons_widget.setLayout(grid)
 
         # add buttons widget to main layout
         main_layout = self.centralWidget().layout()
